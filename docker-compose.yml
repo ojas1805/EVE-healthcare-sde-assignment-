@@ -1,0 +1,48 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: diagnostic-postgres
+
+    environment:
+      POSTGRES_USER: diagnostic_user
+      POSTGRES_PASSWORD: diagnostic_password
+      POSTGRES_DB: diagnostic_db
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U diagnostic_user -d diagnostic_db"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: diagnostic-api
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://diagnostic_user:diagnostic_password@postgres:5432/diagnostic_db
+      JWT_SECRET: change-this-secret-key
+      JWT_EXPIRY: 60
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
